@@ -17,12 +17,14 @@ void bootMain(void) {
 
 void bootMain(void) {
 	int i = 0;
-	int phoff = 0x34; // gcc版本较高(gcc版本高于gcc4)请注释掉此行
-	int offset = 0x1000; 
+	//int phoff = 0x34; // gcc版本较高(gcc版本高于gcc4)请注释掉此行
+	//int offset = 0x1000; 
 	unsigned int elf = 0x100000;
 	void (*kMainEntry)(void);
+
 	kMainEntry = (void(*)(void))0x100000;
 
+	//读入内核
 	for (i = 0; i < 200; i++) {
 		readSect((void*)(elf + i*512), 1+i);
 	}
@@ -30,6 +32,19 @@ void bootMain(void) {
 	// TODO: 填写kMainEntry、phoff、offset
 	// gcc版本较高不需要填写 phoff 和 offset
 	// kMainEntry = (void(*)(void))(...elf...); 这里给出一个提示，注意阅读boot.h中关于ELFHeader相关代码
+	
+	// 将加载到内存的数据视为 ELF 结构进行解析
+    struct ELFHeader *elfHeader = (struct ELFHeader *)elf;
+
+    // 获取内核入口地址
+    kMainEntry = (void(*)(void))(elfHeader->entry);
+
+    // 获取第一个程序头（Program Header）来动态确定偏移量 offset
+    // elfHeader->phoff 指向程序头表相对于文件开头的偏移
+    struct ProgramHeader *ph = (struct ProgramHeader *)(elf + elfHeader->phoff);
+    int offset = ph -> off; // 这就是代码段在 ELF 文件中的真实偏移
+	
+	//搬移代码
 	for (i = 0; i < 200 * 512; i++) {
 		*(unsigned char *)(elf + i) = *(unsigned char *)(elf + i + offset);
 	}
