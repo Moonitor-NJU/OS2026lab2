@@ -29,7 +29,7 @@ void bootMain(void) {
 		readSect((void*)(elf + i*512), 1+i);
 	}
 
-	// TODO: 填写kMainEntry、phoff、offset
+	// TODO_ok: 填写kMainEntry、phoff、offset
 	// gcc版本较高不需要填写 phoff 和 offset
 	// kMainEntry = (void(*)(void))(...elf...); 这里给出一个提示，注意阅读boot.h中关于ELFHeader相关代码
 	
