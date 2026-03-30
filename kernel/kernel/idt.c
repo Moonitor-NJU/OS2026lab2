@@ -71,13 +71,13 @@ void initIdt() {
     setTrap(idt + 0xe, SEG_KCODE, (uint32_t)irqPageFault, DPL_KERN);
 	setTrap(idt + 0x11, SEG_KCODE, (uint32_t)irqAlignCheck,   DPL_KERN);
     setTrap(idt + 0x1e, SEG_KCODE, (uint32_t)irqSecException, DPL_KERN);
-   
+   	//硬件中断
+    setIntr(idt + 0x21, SEG_KCODE, (uint32_t)irqKeyboard, DPL_KERN);
 	/* Exceptions with DPL = 3 */
     // TODO_ok: 填好剩下的表项 
     // 系统调用
     setTrap(idt + 0x80, SEG_KCODE, (uint32_t)irqSyscall, DPL_USER);
-	//硬件中断
-    setIntr(idt + 0x21, SEG_KCODE, (uint32_t)irqKeyboard, DPL_KERN);
+
     
 	/* 写入IDT */
     saveIdt(idt, sizeof(idt));
