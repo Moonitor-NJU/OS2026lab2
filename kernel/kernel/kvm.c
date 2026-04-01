@@ -58,6 +58,23 @@ size of user program is not greater than 200*512 bytes, i.e., 100KB
 */
 
 void loadUMain(void) {
-	// TODO: 参照bootloader加载内核的方式
+	// TODO_ok: 参照bootloader加载内核的方式
+	int i = 0;
+    unsigned int elf = 0x200000; // 用户程序加载的目标地址
+    uint32_t uMainEntry;         // 用于存放解析出来的入口地址
+
+    for (i = 0; i < 200; i++) {
+        readSect((void*)(elf + i * 512), 201 + i); 
+    }
+
+    struct ELFHeader *elfHeader = (struct ELFHeader *)elf;
+    
+    uMainEntry = elfHeader->entry;
+
+    struct ProgramHeader *ph = (struct ProgramHeader *)(elf + elfHeader->phoff);
+
+    for (i = 0; i < 200 * 512; i++) {
+        *(unsigned char *)(elf + i) = *(unsigned char *)(elf + i + ph->off);
+    }
 	enterUserSpace(uMainEntry);
 }

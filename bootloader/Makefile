@@ -19,8 +19,12 @@ CC = gcc
 LD = ld
 
 CFLAGS = -m32 -march=i386 -static \
-	 -fno-builtin -fno-stack-protector -fno-omit-frame-pointer \
-	 -Wall -Werror -O2
+      -fno-builtin -fno-stack-protector -fno-omit-frame-pointer \
+      -Wall -Werror \
+      -Os \
+      -fno-asynchronous-unwind-tables \
+      -fno-pic \
+      -mpreferred-stack-boundary=2
 ASFLAGS = -m32
 LDFLAGS = -m elf_i386
 
