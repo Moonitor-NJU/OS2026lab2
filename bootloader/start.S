@@ -28,7 +28,7 @@ start32:
 	movw %ax, %gs
 	
 	 # TODO_ok: setting esp
-	movl $0x7c00, %esp
+	movl $0x9ffff, %esp
 	jmp bootMain # jump to bootMain in boot.c
 
 .p2align 2

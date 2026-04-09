@@ -34,7 +34,7 @@ int uEntry(void) {
 	printf("Now I will test your getStr: ");
 	printf("Alice is stronger than ");
 	char name[20];
-	//getStr(name,20); // 此处输入大小写不限
+	getStr(name,20); // 此处输入大小写不限
 	printf("%s is stronger than Alice\n",name);
 	//你也可以不改动原测试样例的同时，在此处输出额外的信息(比如你的姓名学号等)作为结果展示
 	printf("=======================================================\n");

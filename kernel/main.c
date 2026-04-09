@@ -9,12 +9,21 @@ void kEntry(void) {
 	initSerial();// initialize serial port
 	putChar('y');
 	// TODO: 做一系列初始化
-	        	// initialize idt
-				// iniialize 8259a
-		 		// initialize gdt, tss
 	initVga(); // initialize vga device
 				// initialize keyboard device
+	initIdt();        	// initialize idt
+	putChar('1');
+
+	initIntr();			// iniialize 8259a
+	putChar('2');
+
+	initSeg();	 		// initialize gdt, tss
+	putChar('3');
+
+	initKeyTable();
+	
 	loadUMain(); // load user program, enter user space
+	enableInterrupt();
 
 	while(1);
 	assert(0);

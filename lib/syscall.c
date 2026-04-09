@@ -56,11 +56,13 @@ int32_t syscall(int num, uint32_t a1,uint32_t a2,
 }
 
 char getChar(){ // 对应SYS_READ STD_IN
-	// TODO: 实现getChar函数，方式不限
+	// TODO_ok: 实现getChar函数，方式不限
+	return (char)syscall(SYS_READ, STD_IN, 0, 0, 0, 0);
 }
 
 void getStr(char *str, int size){ // 对应SYS_READ STD_STR
-	// TODO: 实现getStr函数，方式不限
+	// TODO_ok: 实现getStr函数，方式不限
+	syscall(SYS_READ, STD_STR, (uint32_t)str, (uint32_t)size, 0, 0);
 	return;
 }
 
@@ -79,11 +81,57 @@ void printf(const char *format,...){
 	uint32_t hexadecimal=0;
 	char *string=0;
 	char character=0;
-	while(format[i]!=0){
-		buffer[count] = format[i];
-		count++;
-		// TODO: in lab2
-	}
+while (format[i] != 0) {
+	
+        // 状态 0：处理普通字符
+        if (state == 0) {
+            if (format[i] == '%') {
+                state = 1; // 切换到转义状态
+            } else {
+                buffer[count++] = format[i];
+            }
+        } 
+        // 状态 1：处理 % 后的格式化字符
+        else if (state == 1) {
+            switch (format[i]) {
+                case 'd':
+                    decimal = *(int*)(paraList + index * 4); // 赋值给变量，这下变量被“写入”了
+                    count = dec2Str(decimal, buffer, MAX_BUFFER_SIZE, count); // 传入变量，变量被“读取”了
+                    index++;
+                    break;
+                case 'x':
+                    hexadecimal = *(uint32_t*)(paraList + index * 4);
+                    count = hex2Str(hexadecimal, buffer, MAX_BUFFER_SIZE, count);
+                    index++;
+                    break;
+                case 's':
+                    string = *(char**)(paraList + index * 4);
+                    count = str2Str(string, buffer, MAX_BUFFER_SIZE, count);
+                    index++;
+                    break;
+                case 'c':
+                    character = *(char*)(paraList + index * 4);
+                    buffer[count++] = character;
+                    index++;
+                    break;
+                case '%':
+                    buffer[count++] = '%';
+                    break;
+                default:
+                    state = 0; 
+                    break;
+            }
+            state = 0; 
+        }
+		
+        // 缓冲区安全检查：快满时先打印一部分，防止越界
+        if (count >= MAX_BUFFER_SIZE - 32) { // 预留一点空间给转换后的长字符串
+            syscall(SYS_WRITE, STD_OUT, (uint32_t)buffer, (uint32_t)count, 0, 0);
+            count = 0;
+        }
+        i++;
+    }
+	
 	if(count!=0)
 		syscall(SYS_WRITE, STD_OUT, (uint32_t)buffer, (uint32_t)count, 0, 0);
 }

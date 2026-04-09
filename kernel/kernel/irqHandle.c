@@ -8,6 +8,8 @@ extern uint32_t keyBuffer[MAX_KEYBUFFER_SIZE];
 extern int bufferHead;
 extern int bufferTail;
 
+static int inputStartRow = 0;
+static int inputStartCol = 0;
 
 void GProtectFaultHandle(struct TrapFrame *tf);
 
@@ -55,25 +57,37 @@ void GProtectFaultHandle(struct TrapFrame *tf){
 
 void KeyboardHandle(struct TrapFrame *tf){
 	uint32_t code = getKeyCode();
-	if(code == 0xe){ // 退格符
-		/* TODO_ok: 只能退格当前行的用户输入 */
-		if (displayCol > 0) {
+	char c = 0;
+	int pos = 0;
+	uint16_t data = 0;
+
+	if (code == 0x0e) { /* backspace */
+		if (displayRow > inputStartRow ||
+			(displayRow == inputStartRow && displayCol > inputStartCol)) {
 			displayCol--;
-			int pos = (80 * displayRow + displayCol) * 2;
-            asm volatile("movw %0, (%1)"::"r"((uint16_t)0x0720),"r"(pos + 0xb8000));
+			pos = (80 * displayRow + displayCol) * 2;
+			asm volatile("movw %0, (%1)"::"r"((uint16_t)0x0720), "r"(pos + 0xb8000));
+
+			if (bufferHead != bufferTail) {
+				bufferTail = (bufferTail - 1 + MAX_KEYBUFFER_SIZE) % MAX_KEYBUFFER_SIZE;
+			}
 		}
-	}else if(code == 0x1c){ // 回车符
-		/* TODO_ok: 处理回车 */
+	} else if (code == 0x1c) { /* enter */
+		if (((bufferTail + 1) % MAX_KEYBUFFER_SIZE) != bufferHead) {
+			keyBuffer[bufferTail] = '\n';
+			bufferTail = (bufferTail + 1) % MAX_KEYBUFFER_SIZE;
+		}
+
 		displayRow++;
 		displayCol = 0;
-	}else if(code < 0x81){ // 正常字符
-		/* TODO_ok: 注意大小写切换和不可打印字符处理 */
-		char c = getChar(code);
-
+		inputStartRow = displayRow;
+		inputStartCol = displayCol;
+	} else if (code < 0x81) {
+		c = getChar(code);
 		if (c != 0) {
-			int pos = (80 * displayRow + displayCol) * 2;
-            uint16_t data = 0x0700 | (uint8_t)c;
-            asm volatile("movw %0, (%1)"::"r"(data),"r"(pos + 0xb8000));
+			pos = (80 * displayRow + displayCol) * 2;
+			data = 0x0700 | (uint8_t)c;
+			asm volatile("movw %0, (%1)"::"r"(data), "r"(pos + 0xb8000));
 			displayCol++;
 
 			if (((bufferTail + 1) % MAX_KEYBUFFER_SIZE) != bufferHead) {
@@ -82,6 +96,16 @@ void KeyboardHandle(struct TrapFrame *tf){
 			}
 		}
 	}
+
+	if (displayCol >= 80) {
+		displayCol = 0;
+		displayRow++;
+	}
+	if (displayRow >= 25) {
+		scrollScreen();
+		displayRow = 24;
+	}
+
 	updateCursor(displayRow, displayCol);
 }
 
@@ -125,9 +149,9 @@ void syscallPrint(struct TrapFrame *tf) {
 		} else if (character == '\r') {
 			displayCol = 0;
 		} else {
-			data = (uint8_t)character | (0x0c << 8);
 			pos = (80 * displayRow + displayCol) * 2;
-			asm volatile("movw %0, (%1)"::"r"(data),"r"(pos + 0xb8000));
+			data = (uint8_t)character | (0x0c << 8);
+			asm volatile("movw %0, (%1)"::"r"(data), "r"(pos + 0xb8000));
 			displayCol++;
 		}
 
@@ -136,10 +160,13 @@ void syscallPrint(struct TrapFrame *tf) {
 			displayRow++;
 		}
 		if (displayRow >= 25) {
-			displayRow = 0;
+			scrollScreen();
+			displayRow = 24;
 		}
 	}
-	
+
+	inputStartRow = displayRow;
+	inputStartCol = displayCol;
 	updateCursor(displayRow, displayCol);
 }
 
@@ -157,8 +184,49 @@ void syscallRead(struct TrapFrame *tf){
 
 void syscallGetChar(struct TrapFrame *tf){
 	/* TODO: 自由实现 */
+	// 检查缓冲区是否为空
+	while (bufferHead == bufferTail) {
+		/* busy wait */
+	}
+
+	tf->eax = keyBuffer[bufferHead];
+	bufferHead = (bufferHead + 1) % MAX_KEYBUFFER_SIZE;
 }
 
 void syscallGetStr(struct TrapFrame *tf){
 	/* TODO: 自由实现 */
+	int sel = USEL(SEG_UDATA);
+	char *str = (char *)tf->edx;
+	int size = tf->ebx;
+	int i = 0;
+	char ch = 0;
+
+	asm volatile("movw %0, %%es"::"m"(sel));
+
+	if (size <= 0) {
+		tf->eax = 0;
+		return;
+	}
+
+	while (i < size - 1) {
+		while (bufferHead == bufferTail) {
+			/* busy wait */
+		}
+
+		ch = keyBuffer[bufferHead];
+		bufferHead = (bufferHead + 1) % MAX_KEYBUFFER_SIZE;
+
+		if (ch == '\n' || ch == '\r') {
+			break;
+		}
+
+
+		asm volatile("movb %b0, %%es:(%1)"::"q"(ch), "r"(str + i));
+		i++;
+	}
+
+	ch = '\0';
+	asm volatile("movb %b0, %%es:(%1)"::"q"(ch), "r"(str + i));
+
+	tf->eax = i;
 }
