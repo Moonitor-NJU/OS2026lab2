@@ -24,9 +24,9 @@ void initSeg() { // setup kernel segements
 
 	/*设置正确的段寄存器*/
 	asm volatile("movw %%ax,%%ds":: "a" (KSEL(SEG_KDATA)));
-	//asm volatile("movw %%ax,%%es":: "a" (KSEL(SEG_KDATA)));
-	//asm volatile("movw %%ax,%%fs":: "a" (KSEL(SEG_KDATA)));
-	//asm volatile("movw %%ax,%%gs":: "a" (KSEL(SEG_KDATA)));
+	asm volatile("movw %%ax,%%es":: "a" (KSEL(SEG_KDATA)));
+	asm volatile("movw %%ax,%%fs":: "a" (KSEL(SEG_KDATA)));
+	asm volatile("movw %%ax,%%gs":: "a" (KSEL(SEG_KDATA)));
 	asm volatile("movw %%ax,%%ss":: "a" (KSEL(SEG_KDATA)));
 
 	lLdt(0);
@@ -40,8 +40,13 @@ void enterUserSpace(uint32_t entry) {
 	 * and use 'iret' to jump to ring3
 	 */
 	uint32_t EFLAGS = 0;
+	asm volatile("movw %%ax, %%ds":: "a" (USEL(SEG_UDATA)));
+	asm volatile("movw %%ax, %%es":: "a" (USEL(SEG_UDATA)));
+	asm volatile("movw %%ax, %%fs":: "a" (USEL(SEG_UDATA)));
+	asm volatile("movw %%ax, %%gs":: "a" (USEL(SEG_UDATA)));
 	asm volatile("pushl %0":: "r" (USEL(SEG_UDATA))); // push ss
-	asm volatile("pushl %0":: "r" (0x2fffff)); 
+	/* User stack offset in user data segment [0x0, 0x000fffff]. */
+	asm volatile("pushl %0":: "r" (0x000ffffc));
 	asm volatile("pushfl"); //push eflags, sti
 	asm volatile("popl %0":"=r" (EFLAGS));
 	asm volatile("pushl %0"::"r"(EFLAGS|0x200));
@@ -60,21 +65,44 @@ size of user program is not greater than 200*512 bytes, i.e., 100KB
 void loadUMain(void) {
 	// TODO_ok: 参照bootloader加载内核的方式
 	int i = 0;
-    unsigned int elf = 0x200000; // 用户程序加载的目标地址
-    uint32_t uMainEntry;         // 用于存放解析出来的入口地址
+	int j = 0;
+	unsigned int elf = 0x200000;
+	uint32_t uMainEntry;
+	uint32_t phnum;
+	struct ELFHeader *elfHeader;
+	struct ProgramHeader *ph;
+	struct ProgramHeader phCopy[16];
 
-    for (i = 0; i < 200; i++) {
-        readSect((void*)(elf + i * 512), 201 + i); 
-    }
+	for (i = 0; i < 200; i++) {
+		readSect((void*)(elf + i * 512), 201 + i);
+	}
 
-    struct ELFHeader *elfHeader = (struct ELFHeader *)elf;
-    
-    uMainEntry = elfHeader->entry;
+	elfHeader = (struct ELFHeader *)elf;
+	uMainEntry = elfHeader->entry;
+	phnum = elfHeader->phnum;
 
-    struct ProgramHeader *ph = (struct ProgramHeader *)(elf + elfHeader->phoff);
+	ph = (struct ProgramHeader *)(elf + elfHeader->phoff);
+	if (phnum > 16) {
+		phnum = 16;
+	}
+	for (i = 0; i < (int)phnum; i++) {
+		phCopy[i] = ph[i];
+	}
 
-    for (i = 0; i < 200 * 512; i++) {
-        *(unsigned char *)(elf + i) = *(unsigned char *)(elf + i + ph->off);
-    }
+	for (i = 0; i < (int)phnum; i++) {
+		if (phCopy[i].type != 1) { /* PT_LOAD */
+			continue;
+		}
+
+		j = 0;
+		for (j = 0; j < (int)phCopy[i].filesz; j++) {
+			*(unsigned char *)(elf + phCopy[i].vaddr + j) =
+				*(unsigned char *)(elf + phCopy[i].off + j);
+		}
+		for (; j < (int)phCopy[i].memsz; j++) {
+			*(unsigned char *)(elf + phCopy[i].vaddr + j) = 0;
+		}
+	}
+
 	enterUserSpace(uMainEntry);
 }

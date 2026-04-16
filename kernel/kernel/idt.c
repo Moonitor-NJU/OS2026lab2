@@ -53,7 +53,7 @@ void initIdt() {
     int i;
     /* 为了防止系统异常终止，所有irq都有处理函数(irqEmpty)。 */
     for (i = 0; i < NR_IRQ; i ++) {
-        setTrap(idt + i, SEG_KCODE, (uint32_t)irqEmpty, DPL_KERN);
+        setTrap(idt + i, KSEL(SEG_KCODE), (uint32_t)irqEmpty, DPL_KERN);
     }
     /*
      * init your idt here
@@ -61,22 +61,22 @@ void initIdt() {
      */
 
     /* Exceptions with error code */
-    setTrap(idt + 0x8, SEG_KCODE, (uint32_t)irqDoubleFault, DPL_KERN);
+    setTrap(idt + 0x8, KSEL(SEG_KCODE), (uint32_t)irqDoubleFault, DPL_KERN);
     
 	// TODO_ok: 填好剩下的表项
-    setTrap(idt + 0xa, SEG_KCODE, (uint32_t)irqInvalidTSS, DPL_KERN);
-    setTrap(idt + 0xb, SEG_KCODE, (uint32_t)irqSegNotPresent, DPL_KERN);
-    setTrap(idt + 0xc, SEG_KCODE, (uint32_t)irqStackSegFault, DPL_KERN);
-    setTrap(idt + 0xd, SEG_KCODE, (uint32_t)irqGProtectFault, DPL_KERN);
-    setTrap(idt + 0xe, SEG_KCODE, (uint32_t)irqPageFault, DPL_KERN);
-	setTrap(idt + 0x11, SEG_KCODE, (uint32_t)irqAlignCheck,   DPL_KERN);
-    setTrap(idt + 0x1e, SEG_KCODE, (uint32_t)irqSecException, DPL_KERN);
+    setTrap(idt + 0xa, KSEL(SEG_KCODE), (uint32_t)irqInvalidTSS, DPL_KERN);
+    setTrap(idt + 0xb, KSEL(SEG_KCODE), (uint32_t)irqSegNotPresent, DPL_KERN);
+    setTrap(idt + 0xc, KSEL(SEG_KCODE), (uint32_t)irqStackSegFault, DPL_KERN);
+    setTrap(idt + 0xd, KSEL(SEG_KCODE), (uint32_t)irqGProtectFault, DPL_KERN);
+    setTrap(idt + 0xe, KSEL(SEG_KCODE), (uint32_t)irqPageFault, DPL_KERN);
+	setTrap(idt + 0x11, KSEL(SEG_KCODE), (uint32_t)irqAlignCheck,   DPL_KERN);
+    setTrap(idt + 0x1e, KSEL(SEG_KCODE), (uint32_t)irqSecException, DPL_KERN);
    	//硬件中断
-    setIntr(idt + 0x21, SEG_KCODE, (uint32_t)irqKeyboard, DPL_KERN);
+    setIntr(idt + 0x21, KSEL(SEG_KCODE), (uint32_t)irqKeyboard, DPL_KERN);
 	/* Exceptions with DPL = 3 */
     // TODO_ok: 填好剩下的表项 
     // 系统调用
-    setTrap(idt + 0x80, SEG_KCODE, (uint32_t)irqSyscall, DPL_USER);
+    setTrap(idt + 0x80, KSEL(SEG_KCODE), (uint32_t)irqSyscall, DPL_USER);
 
     
 	/* 写入IDT */

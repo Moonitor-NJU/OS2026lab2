@@ -74,7 +74,7 @@ void printf(const char *format,...){
 	int i=0; // format index
 	char buffer[MAX_BUFFER_SIZE];
 	int count=0; // buffer index
-	int index=0; // parameter index
+	int index=1; // parameter index, 0 is the format string itself
 	void *paraList=(void*)&format; // address of format in stack
 	int state=0; // 0: legal character; 1: '%'; 2: illegal format
 	int decimal=0;

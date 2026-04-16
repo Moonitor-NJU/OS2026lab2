@@ -35,16 +35,13 @@ void bootMain(void) {
 	// kMainEntry = (void(*)(void))(...elf...); 这里给出一个提示，注意阅读boot.h中关于ELFHeader相关代码
 	
 	struct ELFHeader *elfHeader = (struct ELFHeader *)elf;
-	outByte(0x3F8, 'B'); // B1
 
 	// 关键：在任何搬移发生前，先保存好入口地址
 	kMainEntry = (void(*)(void))(elfHeader->entry);
-	outByte(0x3F8, 'B'); // B2
 
 	struct ProgramHeader *ph = (struct ProgramHeader *)(elf + elfHeader->phoff);
 	unsigned int offset = ph->off;
 	unsigned int vaddr = ph->vaddr;
-	outByte(0x3F8, 'B'); // B3
 
 	for (i = 0; i < 200 * 512; i++) {
 		*(unsigned char *)(vaddr + i) = *(unsigned char *)(elf + i + offset);
